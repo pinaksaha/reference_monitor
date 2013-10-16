@@ -1,0 +1,61 @@
+TYPE="type"
+ARGS="args"
+RETURN="return"
+EXCP="exceptions"
+TARGET="target"
+FUNC="func"
+OBJC="objc"
+
+class SecureFile():
+  def __init__(self,file):
+    # globals
+    mycontext['debug'] = False   
+    mycontext['read'] = False
+    mycontext['write'] = False
+    mycontext['append'] = False
+    # local (per object) reference to the underlying file
+    self.file = file
+
+  def setread(self,enabled):
+    mycontext['read'] = enabled
+
+  def setwrite(self,enabled):
+    mycontext['write'] = enabled
+
+  def setappend(self,enabled):
+    mycontext['append'] = enabled
+
+  def readat(self,bytes,offset):
+    if not mycontext['read']:
+      raise ValueError
+    return self.file.readat(bytes,offset)
+
+  def writeat(self,data,offset):
+    if not mycontext['write']:
+      return
+    if not mycontext['append']:
+      return
+    self.file.writeat(data,offset)
+
+
+  def close(self):
+    return self.file.close()
+
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setread":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setread},
+                "setwrite":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setwrite},
+                "setappend":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setappend},
+                "readat":{TYPE:FUNC,ARGS:((int,long),(int,long)),EXCP:Exception,RETURN:str,TARGET:SecureFile.readat},
+                "writeat":{TYPE:FUNC,ARGS:(str,(int,long)),EXCP:Exception,RETURN:(int,type(None)),TARGET:SecureFile.writeat},
+                "close":{TYPE:FUNC,ARGS:None,EXCP:None,RETURN:(bool,type(None)),TARGET:SecureFile.close}
+           }
+
+def secure_openfile(filename, create):
+  f = openfile(filename,create)
+  return SecureFile(f)
+
+CHILD_CONTEXT_DEF["openfile"] = {TYPE:OBJC,ARGS:(str,bool),EXCP:Exception,RETURN:sec_file_def,TARGET:secure_openfile}
+
+secure_dispatch_module()
+

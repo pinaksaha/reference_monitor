@@ -1,0 +1,27 @@
+if "look.txt" in listfiles():
+  removefile("look.txt")
+myfile=openfile("look.txt",True)  #Open a file
+
+#Write some data to file
+myfile.setread(True)
+myfile.setwrite(True)
+myfile.setappend(True)
+myfile.writeat("This is secure",0)
+
+# This read is in the region written by writeat and should not be blocked...
+x=myfile.readat(14,0)
+log(x)
+
+#Try to overwrite data without permissions
+myfile.setwrite(False)
+myfile.writeat("SECURITY",8)   # no exception because append is allowed...   (seems odd)
+y=myfile.readat(16,0)
+if y == "This is secureTY":
+  #If security layer successful, this should pass
+  pass
+else:
+  #If security layer fails
+  log("Data compromised!")
+
+#Close the file
+myfile.close()
