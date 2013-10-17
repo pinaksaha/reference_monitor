@@ -1,1 +1,101 @@
+'''
+Pinak Saha
+0408908
+Fall 2013
+Computer Security: HW 2 Part 1
+Reference Monitor
 
+
+
+'''
+
+TYPE="type"
+ARGS="args"
+RETURN="return"
+EXCP="exceptions"
+TARGET="target"
+FUNC="func"
+OBJC="objc"
+
+class SecureFile():
+	
+	def __init__(self,file):
+		
+		self.file = file
+		self.private_pos = []
+		
+	def readat(self,bytes,offset):
+		
+		for (start,end in self.private_pos):
+			if (offset == start):
+				raise ValueError
+			if (offset+bytes == end):
+				raise ValueError
+			if (offset >= start and offset < end):
+				raise ValueError
+			if (offset+bytes > start and offset+bytes < end):
+				raise ValueError
+			if (offset <= start and offset+bytes >= end):
+				raise ValueError
+		return self.file.readat(bytes,offset)
+	
+	
+	def writeat(self,data,offset):
+		for start, end in self.private_pos:
+			if offset==start:
+				newstart=(offset+len(data))
+				self.private_pos.append((newstart,end))
+				self.private_pos.remove((start,end))
+				
+			else:
+				if offset+len(data)==end:
+					newend=offset
+					self.private_pos.remove((start,end))
+					self.private_pos.append((start,newend))					
+				else:	
+					if offset>start and offset+len(data)<end:
+						newend=offset
+						newstart=(offset+len(data))
+						self.private_pos.remove((start,end))
+						self.private_pos.append((start,newend))
+						self.private_pos.append((newstart,end))		
+					else:
+						if offset>start and (offset+len(data))>end:
+							newend=(end-(end-offset))
+							self.private_pos.remove((start,end))
+							self.private_pos.append((start,newend))
+						else:	
+							if offset<start and (offset+len(data))<end:
+								newstart=offset+len(data)
+								self.private_pos.remove((start,end))
+								self.private_pos.append((newstart,end))
+							else:	
+								
+								if offset<start and (offset+len(data))>end:
+									self.private_pos.remove((start,end))
+					
+		self.file.writeat(data,offset)
+		
+
+'''
+Code below borrowed from :
+https://seattle.poly.edu/wiki/EducationalAssignments/PermissionsPartOne#Abasicandinadequatedefense
+
+'''
+sec_file_def = {"obj-type":SecureFile,
+                "name":"SecureFile",
+                "setread":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setread},
+                "setwrite":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setwrite},
+                "setappend":{TYPE:FUNC,ARGS:[bool],EXCP:Exception,RETURN:(type(None)),TARGET:SecureFile.setappend},
+                "readat":{TYPE:FUNC,ARGS:((int,long),(int,long)),EXCP:Exception,RETURN:str,TARGET:SecureFile.readat},
+                "writeat":{TYPE:FUNC,ARGS:(str,(int,long)),EXCP:Exception,RETURN:(int,type(None)),TARGET:SecureFile.writeat},
+                "close":{TYPE:FUNC,ARGS:None,EXCP:None,RETURN:(bool,type(None)),TARGET:SecureFile.close}
+           }
+
+def secure_openfile(filename, create):
+  f = openfile(filename,create)
+  return SecureFile(f)
+
+CHILD_CONTEXT_DEF["openfile"] = {TYPE:OBJC,ARGS:(str,bool),EXCP:Exception,RETURN:sec_file_def,TARGET:secure_openfile}
+
+secure_dispatch_module()	
